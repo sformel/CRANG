@@ -1,0 +1,12 @@
+sampleID
+hour
+minute
+second
+day
+month
+year
+mV
+temp
+process
+stir_plate_power
+sample_power
