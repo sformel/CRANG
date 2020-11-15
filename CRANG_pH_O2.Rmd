@@ -22,12 +22,13 @@ library(data.table)
 library(lubridate)
 library(magrittr)
 library(scales)
+library(reshape2)
 
 ```
 
 ## Load and clean data
 
-```{r Load and clean data}
+```{r Load and clean pH data}
 
 header <- read_lines(file = "test_data/header.txt")
 pH <- read.csv(file = "test_data/C1.csv", header = FALSE)
@@ -62,10 +63,41 @@ pH <- pH %>%
 
 ```
 
+```{r load and clean O2 data}
 
-## Calculate summary stats
+O2 <- read.table(file = "test_data/11022020Test0240.csv", sep = "\t", skip = 22, fileEncoding = "UTF-16", strip.white = TRUE, header = TRUE)
 
-```{r Sum Stats, message = FALSE}
+#remove empty columns
+O2 <- Filter(function(x)!all(is.na(x)), O2)
+
+
+#Remove Temp C column as it seems to match the temp of all channels, except Channel 2.  Not sure why that one is different, but it is.
+
+O2 <- O2 %>%
+  select(-Temperature...C.)
+
+#gather into channels
+O2 <- gather(data = O2, key = "Variable", value = "Value", Oxygen.CH.1:Temperature.CH.4)
+
+#split Variable string for Channel info
+chan.var <- colsplit(O2$Variable,"\\.",c("Variable","Channel"))
+
+#Add columns - kinda janky, but oddly seems to be the cleanest way to do it
+O2$Variable <- chan.var$Variable
+O2$Channel <- chan.var$Channel
+
+#spread
+O2 <- spread(data = O2, key = Variable, value = Value)
+
+#make time column
+O2$date_time <- as.POSIXct(strptime(paste(O2$Date..DD.MM.YYYY., O2$Time..HH.MM.SS.), format =  "%m/%d/%Y %I:%M:%S %p"))
+
+```
+
+
+## Calculate summary stats pH
+
+```{r Sum Stats pH, message = FALSE}
 
 summary_stats <- function(x, cat_var, num_var){
   cat_var <- enquo(cat_var)
@@ -86,14 +118,14 @@ sum.stats <- pH %>%
 
 ```
 
-## Make linear regressions
+## Make linear regressions pH
 
-```{r LM stats, message = FALSE}
+```{r LM stats pH, message = FALSE}
 
 lm.stats <-  pH %>%
   group_by(sample_set) %>%
   do({
-    result = lm(mV ~ date_time, .)
+    result = lm(pH ~ date_time, .)
     tibble(r_squared = 
                  result %>% 
                  summary %>% 
@@ -126,9 +158,9 @@ kable(all.stats)
 
 ```
 
-## Plots
+## Plots pH
 
-```{r Plots, fig.width=10, message = FALSE}
+```{r Plots pH, fig.width=10, message = FALSE}
 
 pH %>%
 ggplot(aes(x = date_time,
@@ -147,4 +179,86 @@ ggplot(aes(x = date_time,
 ```
 
 
+## Calculate summary stats O2
+
+```{r Sum Stats O2, message = FALSE}
+
+summary_stats <- function(x, cat_var, num_var){
+  cat_var <- enquo(cat_var)
+  num_var <- enquo(num_var)
+
+  x %>%
+    group_by(!!cat_var) %>%
+    summarize(avg = mean(!!num_var), 
+              n = n(), 
+              sd = sd(!!num_var), 
+              se = sd/sqrt(n),
+              min = min(!!num_var),
+              max = max(!!num_var))
+}
+
+sum.stats <- O2 %>%
+  summary_stats(cat_var = Channel, num_var = Oxygen)
+
+```
+
+## Make linear regressions O2
+
+```{r LM stats O2, message = FALSE}
+
+lm.stats <-  O2 %>%
+  group_by(Channel) %>%
+  do({
+    result = lm(Oxygen ~ date_time, .)
+    tibble(r_squared = 
+                 result %>% 
+                 summary %>% 
+                 use_series(adj.r.squared),
+               p_value = 
+                 result %>% 
+                 anova %>% 
+                 use_series(`Pr(>F)`) %>% 
+                 extract2(1) ) %>%
+      bind_cols(
+        result %>%
+          coef %>%
+          as.list %>%
+          as_tibble) %>%
+      select(-`(Intercept)`)})
+
+#Combine stats
+
+all.stats <- inner_join(x = sum.stats, y = lm.stats )
+
+#convert seconds to minute
+all.stats$date_time <- all.stats$date_time*60
+
+#change name to "slope"
+#round
+all.stats[,-1] <- lapply(all.stats[,-1], round, digits = 3)
+
+#view stats
+kable(all.stats)
+
+```
+
+## Plots O2
+
+```{r Plots O2, fig.width=10, message = FALSE}
+
+O2 %>%
+ggplot(aes(x = date_time,
+           y = Oxygen)) +
+  geom_point(shape = 21,
+             fill = "pink",
+             alpha = 0.5) +
+  facet_wrap(~ Channel, scales = "free_x") +
+  geom_smooth(method = "lm",
+              color = "black") +
+  scale_x_datetime(labels = date_format("%D \n %H:%M")) + 
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        panel.spacing = unit(2, "lines"))
+
+```
 
