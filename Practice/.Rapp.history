@@ -1,0 +1,18 @@
+2+2
+4^3
+q()
+themes<-read.csv("themes.csv")
+save.image()
+ls()
+data = read.csv("/Users/Nate/Desktop/R/Practice//11-2-2020Test0240.csv", header=T)
+setwd("/Users/Nate/Desktop/R/Practice")
+data1<-read.csv(file='11-2-2020Test0240.csv')
+data1<-read.csv(file='11022020Test0240.csv')
+head(data)
+head(channel)
+head(1)
+head(date)
+data1<-read.csv(file='11022020Test0240.csv')
+head(data)
+head(data1)
+head(data1)

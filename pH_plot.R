@@ -12,12 +12,12 @@ library(scales)
 
 #load data------
 
-header <- read_lines(file = "data/header.txt")
-pH <- read.csv(file = "data/C1.csv", header = FALSE)
+header <- read_lines(file = "test_data/header.txt")
+pH <- read.csv(file = "test_data/C1.csv", header = FALSE)
 names(pH) <- c(header)
 
 #calibration data
-calib <- read_excel("data/crangpHProbeTrisCalib.xlsx", sheet = "Tris pH")
+calib <- read_excel("test_data/crangpHProbeTrisCalib.xlsx", sheet = "Tris pH")
 
 #clean data-----
 
@@ -47,7 +47,7 @@ pH <- pH %>%
 
 #Calculate summary stats------
 
-my_fun <- function(x, cat_var, num_var){
+summary_stats <- function(x, cat_var, num_var){
   cat_var <- enquo(cat_var)
   num_var <- enquo(num_var)
 
@@ -62,7 +62,7 @@ my_fun <- function(x, cat_var, num_var){
 }
 
 sum.stats <- pH %>%
-  my_fun(cat_var = sample_set, num_var = pH)
+  summary_stats(cat_var = sample_set, num_var = pH)
 
 #lm of pH ~ time----
 
