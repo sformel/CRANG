@@ -9,9 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Question: Why is this file commma separated and the last one was tab?  
-
-Also they are in different character formats. Also, the degree symbols has turned into infinity symbols.  Once I replace them it was fine.
+In this version I've gotten rid of Nate's code, added a line to remove any strange characters in the original data and added a variable to programatically separate out data by dataset.
 
 ```{r load libraries, message = FALSE}
 
