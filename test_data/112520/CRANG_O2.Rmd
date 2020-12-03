@@ -1,0 +1,330 @@
+---
+title: "codeCRANG_SF_edits"
+author: "Stephen Formel"
+date: "11/25/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, 
+                      message = FALSE, 
+                      warning = FALSE)
+```
+
+```{r load libraries, }
+
+library(knitr)
+library(kableExtra)
+library(tidyverse)
+library(readxl)
+library(data.table)
+library(lubridate)
+library(magrittr)
+library(scales)
+library(reshape2)
+library(stringr)
+library(stringi)
+library(cowplot)
+
+```
+
+
+## What it is and what it isn't
+
+- Import datasets as a list
+- remove columns we don't need 
+- make variables to separate out:
+  - datasets
+  - channels
+  - incubation periods
+- Make summary descriptive stats
+  - Do linear regression and get stats on each
+  - dataset x channel x incubation
+  
+```{r }
+
+#make list of files
+FL <- list.files(path = "./", pattern = "*DO.csv",
+                 full.names = TRUE, 
+                 all.files = FALSE)
+
+#make dataset name variable
+set_name <- str_extract(FL, pattern = "\\d{4}DO")
+
+
+#Keep this in here as a note to how we might deal with the data when it gets corrupted
+
+#strip non-ASCII characters
+# O2.list <- lapply(FL, read.table, 
+#                   sep = "\t",
+#                   skip = 21,
+#                   strip.white = TRUE,
+#                   header = TRUE,
+#                   fileEncoding="Latin-1")
+# 
+# function(x) stri_trans_general, "latin-ascii")
+
+#read in data into list
+
+O2.list <- lapply(FL, read.table, 
+                  sep = "\t",
+                  skip = 21,
+                  strip.white = TRUE,
+                  header = TRUE,
+                  fileEncoding="UTF-16")
+
+#remove empty columns
+O2.list <- lapply(O2.list, function(x){
+  x <- Filter(function(y)!all(is.na(y)), x)
+         })
+
+#Remove Temp C column as it seems to match the temp of all channels, except Channel 2.  Not sure why that one is different, but it is.
+
+O2.list <- lapply(O2.list, function(x) {
+  x %>% select(-Temperature...C.)
+}) 
+
+#gather into channels
+O2.list <- lapply(O2.list, function(x) {
+  gather(x, key = "Variable", value = "Value", Oxygen.CH.1:Temperature.CH.4)
+})
+
+#split Variable string for Channel info - from reshape2 pkg
+O2.list <- lapply(O2.list, function(x) {
+  y <- colsplit(x$Variable,"\\.",c("Variable","Channel"))
+  x$Variable <- y$Variable
+  x$Channel <- y$Channel
+  return(x)
+})
+
+#spread
+O2.list <- lapply(O2.list, function(x) {
+  spread(x, key = Variable, value = Value)
+})
+
+#make time column
+O2.list <- lapply(O2.list, function(x) {
+  x$date_time <- as.POSIXct(strptime(paste(x$Date..DD.MM.YYYY., 
+                            x$Time..HH.MM.SS.), 
+                      format =  "%m/%d/%Y %I:%M:%S %p"), tz = "UTC")
+  return(x)
+})
+
+#Add Dataset name variable
+O2.list <- Map(cbind, O2.list, data_name = set_name)
+
+O2 <- rbindlist(O2.list) %>% 
+  arrange(Channel, date_time)
+
+```
+
+
+```{r, out.width = "100%"}
+
+# Split by Incubation Reference Times
+#This file is made by hand and contains the start/stop time of each incubation.
+
+#Read reference file and split into incubation subsets
+
+IR_name <- list.files(path = "./", pattern = "IncRef*.*csv")
+IncReference <- read.csv(IR_name,header=TRUE)
+
+IncReference$Start <- as.POSIXct(IncReference$Start, tz = "UTC")
+IncReference$Stop <- as.POSIXct(IncReference$Stop, tz = "UTC")
+
+#may need to adjust to be inclusiv for bounds
+overlap.function <- function(vals) {
+  rowSums(mapply(function(a,b) between(vals, a, b),
+                 IncReference$Start, IncReference$Stop)) > 0
+}
+
+
+O2 <- O2 %>%
+  filter(overlap.function(O2$date_time))
+
+#It appears as if Incubations 6-8 might have incorrect times
+
+O2$Set <- ifelse(between(O2$date_time, 
+                    lower = IncReference$Start[1], 
+                    upper =  IncReference$Stop[1]),
+                 yes = 1,
+                 no = ifelse(between(O2$date_time, 
+                    lower = IncReference$Start[2], 
+                    upper =  IncReference$Stop[2]),
+                 yes = 2,
+                 no = ifelse(between(O2$date_time, 
+                    lower = IncReference$Start[3], 
+                    upper =  IncReference$Stop[3]),
+                 yes = 3,
+                 no = ifelse(between(O2$date_time, 
+                    lower = IncReference$Start[4], 
+                    upper =  IncReference$Stop[4]),
+                 yes = 4,
+                 no = ifelse(between(O2$date_time, 
+                    lower = IncReference$Start[5], 
+                    upper =  IncReference$Stop[5]),
+                 yes = 5,
+                 no = ifelse(between(O2$date_time, 
+                    lower = IncReference$Start[6], 
+                    upper =  IncReference$Stop[6]),
+                 yes = 6,
+                 no = ifelse(between(O2$date_time, 
+                    lower = IncReference$Start[7], 
+                    upper =  IncReference$Stop[7]),
+                 yes = 7,
+                 no = ifelse(between(O2$date_time, 
+                    lower = IncReference$Start[8], 
+                    upper =  IncReference$Stop[8]),
+                 yes = 8,
+                 no = NA)))))))) %>% 
+  as.factor()
+
+#Make Relative Time by Set
+O2 <- O2 %>% 
+  group_by(Set, Channel) %>% 
+  mutate(Rel_Time = row_number()/2)
+
+#Just to clean up plot and show Nate
+# O2$Channel <- plyr::revalue(O2$Channel, replace = c("CH.1" = "CH5",
+#                                                     "CH.1.2" = "CH1",
+#                                                     "CH.2.2" = "CH2",
+#                                                     "CH.3.2" = "CH3",
+#                                                     "CH.4.2" = "CH4"))
+# #Just to clean up plot and show Nate
+# O2$Set <- plyr::revalue(O2$Set, replace = c("1" = "Incubation 1",
+#                                                     "2" = "Incubation 2",
+#                                                     "3" = "Incubation 3",
+#                                                     "4" = "Incubation 4",
+#                                                     "5" = "Incubation 5"))
+
+
+#normal plot
+O2 %>%
+ggplot(aes(x = Rel_Time,
+           y = Oxygen,
+           fill = Set)) +
+  geom_point(shape = 21,
+             alpha = 0.5) +
+  facet_grid(cols = vars(Channel),
+             rows = vars(data_name)) +
+  geom_smooth(method = "lm",
+              color = "black", size = 0.5) +
+  #scale_x_datetime(labels = date_format("%D \n %H:%M")) + 
+  theme_bw() +
+  theme(legend.position = "right",
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        panel.spacing = unit(2, "lines")) +
+  labs(x = "Minutes",
+       fill = "Incubation")
+
+ggsave(filename = "./figures/test_plot.png", width = 5, height = 3, units = "in")
+
+
+```
+
+### Stats
+
+You might want to think about a GLM for this to control for the random effect of Sensor and/or tank.  
+
+```{r }
+
+# summary_stats <- function(x, cat_var, num_var){
+#   cat_var <- enquo(cat_var)
+#   num_var <- enquo(num_var)
+# 
+#   x %>%
+#     group_by(!!cat_var) %>%
+#     summarize(avg = mean(!!num_var), 
+#               n = n(), 
+#               sd = sd(!!num_var), 
+#               se = sd/sqrt(n),
+#               min = min(!!num_var),
+#               max = max(!!num_var))
+# }
+
+# sum_fun <- function(.data, .summary_var, .group_vars) {
+#   summary_var <- enquo(.summary_var)
+# 
+#   .data %>%
+#     group_by_at(.group_vars) %>%
+#     summarise(mean = mean(!!summary_var))
+# }
+
+# sum.stats <- O2 %>% 
+#   summary_stats(cat_var = vars(data_name, Channel, Set), num_var = Oxygen)
+
+
+sum.stats <- O2 %>%
+  na.omit() %>% 
+    group_by(data_name, Channel, Set) %>%
+    summarize(avg = mean(Oxygen), 
+              n = n(), 
+              sd = sd(Oxygen), 
+              se = sd/sqrt(n),
+              min = min(Oxygen),
+              max = max(Oxygen))
+ 
+
+lm.stats <-  O2 %>%
+  na.omit() %>% 
+  group_by(data_name, Channel, Set) %>%
+  do({
+    result = lm(Oxygen ~ date_time, .)
+    tibble(r_squared = 
+                 result %>% 
+                 summary %>% 
+                 use_series(adj.r.squared),
+               p_value = 
+                 result %>% 
+                 anova %>% 
+                 use_series(`Pr(>F)`) %>% 
+                 extract2(1) ) %>%
+      bind_cols(
+        result %>%
+          coef %>%
+          as.list %>%
+          as_tibble) %>%
+      select(-`(Intercept)`)})
+
+#Combine stats
+
+all.stats <- inner_join(x = sum.stats, y = lm.stats )
+
+#convert seconds to minute
+all.stats$date_time <- all.stats$date_time*60
+
+#change name to "slope"
+all.stats <- all.stats %>% 
+  rename("slope per min" = date_time) 
+
+#Arrange by incubation - needed for final table
+
+all.stats <- all.stats %>% 
+  arrange(Set)
+
+#Change Set name
+all.stats$Set <- plyr::revalue(all.stats$Set, replace = c("1" = "Incubation 1",
+                                                    "2" = "Incubation 2",
+                                                    "3" = "Incubation 3",
+                                                    "4" = "Incubation 4",
+                                                    "5" = "Incubation 5",
+                                                    "6" = "Incubation 6",
+                                                    "7" = "Incubation 7",
+                                                    "8" = "Incubation 8"))
+
+
+#view stats
+all.stats %>% 
+  #select(-Set) %>% 
+  dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>%
+    kable(., caption = "O2 Sumary Stats", booktabs = T) %>%
+  kable_styling() %>% 
+  pack_rows(index = table(all.stats$Set)) %>% 
+  collapse_rows(columns = 1, valign = "top") %>% 
+  remove_column(columns = 3)
+
+
+
+```
+
+End Script

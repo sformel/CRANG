@@ -13,13 +13,13 @@ SETTINGS,CH 1,CH 2,CH 3,CH 4,TEMP,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Moving average,None,None,None,None,None,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 CALIBRATION,CH 1,CH 2,CH 3,CH 4,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-Phase low [deg],58.87,58.52,59.26,59.46,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-Phase high [deg],27.16,26.65,27.16,27.14,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-Temperature low [degC],25.77,25.76,25.76,25.77,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-Temperature high [degC],24.6,24.59,24.59,24.61,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Phase low [°],58.87,58.52,59.26,59.46,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Phase high [°],27.16,26.65,27.16,27.14,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Temperature low [°C],25.77,25.76,25.76,25.77,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Temperature high [°C],24.6,24.59,24.59,24.61,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 Temperature input,Temperature,Entered,Temperature,Temperature,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-Date [DD-MM-YYYY],Time [HH:MM:SS],Time stamp,Relative time [HH:MM:SS],,Oxygen CH 1,Phase CH 1,Amplitude CH 1,Pressure CH 1,Salinity CH 1,Temperature CH 1,,Oxygen CH 2,Phase CH 2,Amplitude CH 2,Pressure CH 2,Salinity CH 2,Temperature CH 2,,Oxygen CH 3,Phase CH 3,Amplitude CH 3,Pressure CH 3,Salinity CH 3,Temperature CH 3,,Oxygen CH 4,Phase CH 4,Amplitude CH 4,Pressure CH 4,Salinity CH 4,Temperature CH 4,,Temperature [degC]
+Date [DD-MM-YYYY],Time [HH:MM:SS],Time stamp,Relative time [HH:MM:SS],,Oxygen CH 1,Phase CH 1,Amplitude CH 1,Pressure CH 1,Salinity CH 1,Temperature CH 1,,Oxygen CH 2,Phase CH 2,Amplitude CH 2,Pressure CH 2,Salinity CH 2,Temperature CH 2,,Oxygen CH 3,Phase CH 3,Amplitude CH 3,Pressure CH 3,Salinity CH 3,Temperature CH 3,,Oxygen CH 4,Phase CH 4,Amplitude CH 4,Pressure CH 4,Salinity CH 4,Temperature CH 4,,Temperature [°C]
 11/2/20,5:59:22 PM,1.32E+17,0:00:01,,6.2812,26.74,35910,1013.25,35,27.93,,6.9614,26.14,7464,1013.25,35,25.3,,6.28,26.75,43403,1013.25,35,27.93,,6.1492,26.96,34082,1013.25,35,27.93,,27.93
 11/2/20,5:59:52 PM,1.32E+17,0:00:31,,6.2834,26.74,35902,1013.25,35,27.92,,6.921,26.2,7463,1013.25,35,25.3,,6.2822,26.75,43386,1013.25,35,27.92,,6.1748,26.92,34033,1013.25,35,27.92,,27.92
 11/2/20,6:00:22 PM,1.32E+17,0:01:01,,6.2954,26.72,35896,1013.25,35,27.92,,6.9479,26.16,7462,1013.25,35,25.3,,6.2883,26.74,43374,1013.25,35,27.92,,6.1807,26.91,34000,1013.25,35,27.92,,27.92
