@@ -1,6 +1,6 @@
 ---
-title: "CRANG O2"
-author: "Brothers Formel Production"
+title: "codeCRANG_SF_edits"
+author: "Stephen Formel"
 date: "11/25/2020"
 output: html_document
 ---
@@ -28,22 +28,18 @@ library(cowplot)
 
 ```
 
-```{r, eval = FALSE}
 
 ## What it is and what it isn't
 
-# - Import datasets as a list
-# - remove columns we don't need 
-# - make variables to separate out:
-#   - datasets
-#   - channels
-#   - incubation periods
-# - Make summary descriptive stats
-#   - Do linear regression and get stats on each
-#   - dataset x channel x incubation
-
-```
-
+- Import datasets as a list
+- remove columns we don't need 
+- make variables to separate out:
+  - datasets
+  - channels
+  - incubation periods
+- Make summary descriptive stats
+  - Do linear regression and get stats on each
+  - dataset x channel x incubation
   
 ```{r }
 
@@ -137,14 +133,14 @@ IncReference$Start <- as.POSIXct(IncReference$Start, tz = "UTC")
 IncReference$Stop <- as.POSIXct(IncReference$Stop, tz = "UTC")
 
 #may need to adjust to be inclusiv for bounds
-# overlap.function <- function(vals) {
-#   rowSums(mapply(function(a,b) between(vals, a, b),
-#                  IncReference$Start, IncReference$Stop)) > 0
-# }
-# 
-# 
-# O2 <- O2 %>%
-#   filter(overlap.function(O2$date_time))
+overlap.function <- function(vals) {
+  rowSums(mapply(function(a,b) between(vals, a, b),
+                 IncReference$Start, IncReference$Stop)) > 0
+}
+
+
+O2 <- O2 %>%
+  filter(overlap.function(O2$date_time))
 
 #It appears as if Incubations 6-8 might have incorrect times
 
@@ -204,14 +200,13 @@ O2 <- O2 %>%
 
 #normal plot
 O2 %>%
-  na.omit() %>% 
-  filter(!(data_name=="0239DO" & Channel %in% c("CH.1", "CH.2", "CH.4"))) %>% 
 ggplot(aes(x = Rel_Time,
            y = Oxygen,
-           fill = interaction(Channel, data_name))) +
+           fill = Set)) +
   geom_point(shape = 21,
              alpha = 0.5) +
-  facet_wrap(~ Set) +
+  facet_grid(cols = vars(Channel),
+             rows = vars(data_name)) +
   geom_smooth(method = "lm",
               color = "black", size = 0.5) +
   #scale_x_datetime(labels = date_format("%D \n %H:%M")) + 
@@ -220,7 +215,7 @@ ggplot(aes(x = Rel_Time,
         axis.text.x = element_text(angle = 45, hjust = 1),
         panel.spacing = unit(2, "lines")) +
   labs(x = "Minutes",
-       fill = "Channel")
+       fill = "Incubation")
 
 ggsave(filename = "./figures/test_plot.png", width = 5, height = 3, units = "in")
 
@@ -229,10 +224,9 @@ ggsave(filename = "./figures/test_plot.png", width = 5, height = 3, units = "in"
 
 ### Stats
 
+You might want to think about a GLM for this to control for the random effect of Sensor and/or tank.  
 
 ```{r }
-
-#You might want to think about a GLM for this to control for the random effect of Sensor and/or tank.  
 
 # summary_stats <- function(x, cat_var, num_var){
 #   cat_var <- enquo(cat_var)
@@ -261,7 +255,6 @@ ggsave(filename = "./figures/test_plot.png", width = 5, height = 3, units = "in"
 
 
 sum.stats <- O2 %>%
-  filter(!(data_name=="0239DO" & Channel %in% c("CH.1", "CH.2", "CH.4"))) %>% 
   na.omit() %>% 
     group_by(data_name, Channel, Set) %>%
     summarize(avg = mean(Oxygen), 
@@ -273,11 +266,10 @@ sum.stats <- O2 %>%
  
 
 lm.stats <-  O2 %>%
-    filter(!(data_name=="0239DO" & Channel %in% c("CH.1", "CH.2", "CH.4"))) %>% 
   na.omit() %>% 
   group_by(data_name, Channel, Set) %>%
   do({
-    result = lm(Oxygen ~ Rel_Time, .)
+    result = lm(Oxygen ~ date_time, .)
     tibble(r_squared = 
                  result %>% 
                  summary %>% 
@@ -299,11 +291,11 @@ lm.stats <-  O2 %>%
 all.stats <- inner_join(x = sum.stats, y = lm.stats )
 
 #convert seconds to minute
-all.stats$Rel_Time <- all.stats$Rel_Time*2
+all.stats$date_time <- all.stats$date_time*60
 
 #change name to "slope"
 all.stats <- all.stats %>% 
-  rename("slope per min" = Rel_Time) 
+  rename("slope per min" = date_time) 
 
 #Arrange by incubation - needed for final table
 
@@ -323,57 +315,16 @@ all.stats$Set <- plyr::revalue(all.stats$Set, replace = c("1" = "Incubation 1",
 
 #view stats
 all.stats %>% 
-  select(-n) %>% 
+  #select(-Set) %>% 
   dplyr::mutate_if(is.numeric, funs(as.character(signif(., 3)))) %>%
     kable(., caption = "O2 Sumary Stats", booktabs = T) %>%
   kable_styling() %>% 
   pack_rows(index = table(all.stats$Set)) %>% 
   collapse_rows(columns = 1, valign = "top") %>% 
-  remove_column(columns = c(3))
-```
+  remove_column(columns = 3)
 
 
-```{r eval = FALSE, echo = FALSE, message= FALSE}
 
-BS <-  O2 %>% 
-  filter(data_name=="0239DO" & Channel=="CH.3" & Set==3) %>% 
-  summarise(max_O2 = max(Oxygen),
-            min_O2 = min(Oxygen))
-
-
-BS <-  O2 %>% 
-  filter(data_name=="0239DO" & Channel=="CH.3" & Set==3)
-
-BS <-  O2 %>% 
-  filter(data_name=="0240DO" & Channel=="CH.2" & Set==1)
-
-BS <-  O2 %>% 
-  filter(data_name=="0240DO" & Channel=="CH.3" & Set==1)
-      
-#0239DO	CH.3	3	0.858425377	7.801977e-154	-9.158001e-06
-
-lm(Oxygen~ date_time, data = BS)
-
-(BS$min_O2-BS$max_O2)/180
-
-O2 %>%
-  na.omit() %>% 
-  filter(data_name=="0240DO" & Set==1 & Channel %in% c("CH.2", "CH.3")) %>% 
-ggplot(aes(x = Rel_Time,
-           y = Oxygen,
-           fill = interaction(Channel, data_name))) +
-  geom_point(shape = 21,
-             alpha = 0.5) +
-  facet_wrap(~ Set) +
-  geom_smooth(method = "lm",
-              color = "black", size = 0.5) +
-  #scale_x_datetime(labels = date_format("%D \n %H:%M")) + 
-  theme_bw() +
-  theme(legend.position = "right",
-        axis.text.x = element_text(angle = 45, hjust = 1),
-        panel.spacing = unit(2, "lines")) +
-  labs(x = "Minutes",
-       fill = "Channel")
 ```
 
 End Script
